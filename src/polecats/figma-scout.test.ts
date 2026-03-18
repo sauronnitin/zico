@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parseTokens, parseComponents, parseLayout } from './figma-scout/transform.js';
-import type { FigmaVariablesResponse, FigmaNode } from './figma-scout/types.js';
+import { buildMarkdown } from './figma-scout/markdown.js';
+import type { FigmaVariablesResponse, FigmaNode, ScoutResult } from './figma-scout/types.js';
 
 describe('parseTokens', () => {
   it('extracts color tokens from COLOR variables', () => {
@@ -155,5 +156,74 @@ describe('parseLayout', () => {
       ],
     };
     expect(parseLayout(page).gridSystems).toContain('COLUMNS (Layout)');
+  });
+});
+
+const mockResult: ScoutResult = {
+  fileId: 'abc123',
+  page: 'Home',
+  fileName: 'Rainmaker',
+  scoutedAt: '2026-03-18T10:00:00.000Z',
+  tokens: {
+    colors: [{ name: 'color/primary/500', value: '#3366cc', type: 'color' }],
+    typography: [{ name: 'font/body', value: 'Inter', type: 'typography' }],
+    spacing: [{ name: 'spacing/sm', value: '8', type: 'spacing' }],
+  },
+  components: [{ name: 'Button', type: 'COMPONENT_SET', variantCount: 3, instanceCount: 5 }],
+  layout: { frameCount: 2, gridSystems: ['COLUMNS (Hero)'], autoLayoutFrames: ['Nav'] },
+  screenshotPath: 'hooks/screenshots/abc123-home.png',
+  markdownPath: 'docs/scouts/2026-03-18-abc123-home.md',
+};
+
+describe('buildMarkdown', () => {
+  it('includes file name and page in header', () => {
+    const md = buildMarkdown(mockResult);
+    expect(md).toContain('# Figma Scout: Rainmaker');
+    expect(md).toContain('**Page:** Home');
+  });
+
+  it('includes color token table', () => {
+    const md = buildMarkdown(mockResult);
+    expect(md).toContain('## Color Tokens');
+    expect(md).toContain('color/primary/500');
+    expect(md).toContain('#3366cc');
+  });
+
+  it('includes typography token table', () => {
+    const md = buildMarkdown(mockResult);
+    expect(md).toContain('## Typography Tokens');
+    expect(md).toContain('font/body');
+  });
+
+  it('includes spacing token table', () => {
+    const md = buildMarkdown(mockResult);
+    expect(md).toContain('## Spacing Tokens');
+    expect(md).toContain('spacing/sm');
+  });
+
+  it('includes component inventory', () => {
+    const md = buildMarkdown(mockResult);
+    expect(md).toContain('## Component Inventory');
+    expect(md).toContain('Button');
+    expect(md).toContain('3');  // variantCount
+  });
+
+  it('includes layout summary', () => {
+    const md = buildMarkdown(mockResult);
+    expect(md).toContain('## Layout');
+    expect(md).toContain('2');  // frameCount
+    expect(md).toContain('Nav');
+  });
+
+  it('includes screenshot embed when screenshotPath is set', () => {
+    const md = buildMarkdown(mockResult);
+    expect(md).toContain('## Screenshot');
+    expect(md).toContain('hooks/screenshots/abc123-home.png');
+  });
+
+  it('omits screenshot section when screenshotPath is empty', () => {
+    const noShot = { ...mockResult, screenshotPath: '' };
+    const md = buildMarkdown(noShot);
+    expect(md).not.toContain('## Screenshot');
   });
 });
