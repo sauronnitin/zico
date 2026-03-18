@@ -1,0 +1,26 @@
+{
+  "domain": "ux-design",
+  "displayName": "UX/UI Design",
+  "description": "UX design patterns, principles, and systems — pre-loaded for all design tasks",
+  "principles": [
+    "Accessibility first — WCAG 2.1 AA minimum",
+    "Mobile-first responsive design",
+    "Component-driven design systems",
+    "Token-based theming (color, typography, spacing)",
+    "Interaction states: default, hover, active, focus, disabled, loading, error",
+    "Auto-layout and constraint-based spacing",
+    "Content hierarchy through typography scale"
+  ],
+  "designSystem": {
+    "tokenCategories": ["color", "typography", "spacing", "radius", "shadow", "motion"],
+    "componentTypes": ["atom", "molecule", "organism", "template", "page"],
+    "variantAxes": ["size", "variant", "state", "theme"]
+  },
+  "tools": {
+    "design": "Figma",
+    "prototyping": "Figma Interactive",
+    "handoff": "Figma Dev Mode",
+    "publishing": "Framer"
+  },
+  "polecatAffinity": ["figma-scout", "spec-writer"]
+}

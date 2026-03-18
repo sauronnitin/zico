@@ -1,0 +1,23 @@
+{
+  "name": "zico",
+  "version": "0.1.0",
+  "description": "Gastown-inspired AI orchestrator for UX design workflows",
+  "type": "module",
+  "main": "src/cli/index.ts",
+  "bin": {
+    "zico": "./dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli/index.ts",
+    "start": "zico start",
+    "test": "vitest"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
+  }
+}

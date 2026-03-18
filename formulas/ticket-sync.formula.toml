@@ -1,0 +1,24 @@
+[formula]
+name = "ticket-sync"
+description = "Refresh Linear ticket state into hooks"
+schedule = "on-startup"
+polecat = "linear-tracker"
+
+[steps]
+  [steps.1]
+  action = "pull-tickets"
+  description = "Fetch current cycle issues where Nitin is mentioned"
+  mcp_tool = "Linear:list_issues"
+  permission = "AUTO"
+
+  [steps.2]
+  action = "update-hook"
+  description = "Write ticket snapshot to hooks/ticket-state.json"
+  hook = "ticket-state"
+  permission = "AUTO"
+
+  [steps.3]
+  action = "detect-stale"
+  description = "Flag tickets with no activity in 5+ days that are blocked on design"
+  hook = "sentinel/stale-tickets"
+  permission = "AUTO"

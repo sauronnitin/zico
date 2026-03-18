@@ -1,0 +1,20 @@
+{
+  "domain": "blue-tees",
+  "displayName": "Blue Tees Golf",
+  "description": "Golf technology company — Nitin is Senior UX Designer",
+  "team": {
+    "cofounder": "Brandon Francisco",
+    "role": "Senior UX Designer",
+    "linearUserId": "b3f41d41-cfea-4dbe-bf87-dc0f2175ecf6"
+  },
+  "projects": [
+    { "name": "Rainmaker", "rig": "rainmaker", "type": "app" },
+    { "name": "NPD/BLE", "rig": "npd-ble", "type": "hardware-app" },
+    { "name": "Design System", "rig": "design-system", "type": "system" },
+    { "name": "Portfolio", "rig": "portfolio", "type": "personal" }
+  ],
+  "figma": {
+    "launchAppFileId": "lp9w6ZIK7ghUopHyaaGHFr"
+  },
+  "tools": ["Figma", "Linear", "Gmail", "GitHub", "Framer"]
+}
