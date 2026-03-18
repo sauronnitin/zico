@@ -1,7 +1,29 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { parseTokens, parseComponents, parseLayout } from './figma-scout/transform.js';
 import { buildMarkdown } from './figma-scout/markdown.js';
-import type { FigmaVariablesResponse, FigmaNode, ScoutResult } from './figma-scout/types.js';
+import type { FigmaVariablesResponse, FigmaNode, ScoutResult, FigmaFileMeta, FigmaVariablesResponse as _FVR } from './figma-scout/types.js';
+import { runFigmaScout, ScoutError } from './figma-scout.js';
+import type { FigmaClient } from './figma-scout/client.js';
+
+// Mock hooks module — path must match what figma-scout.ts imports
+vi.mock('../hooks/index.js', () => ({
+  writeHook: vi.fn().mockResolvedValue(undefined),
+  HOOK_NAMES: { DESIGN_LOG: 'design-log' },
+}));
+
+// Mock fs/promises for file writes
+vi.mock('fs/promises', () => ({
+  mkdir: vi.fn().mockResolvedValue(undefined),
+  writeFile: vi.fn().mockResolvedValue(undefined),
+  dirname: vi.fn(),
+}));
+
+// Mock global fetch for screenshot image download
+const fetchMock = vi.fn().mockResolvedValue({
+  ok: true,
+  arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+});
+vi.stubGlobal('fetch', fetchMock);
 
 describe('parseTokens', () => {
   it('extracts color tokens from COLOR variables', () => {
@@ -225,5 +247,94 @@ describe('buildMarkdown', () => {
     const noShot = { ...mockResult, screenshotPath: '' };
     const md = buildMarkdown(noShot);
     expect(md).not.toContain('## Screenshot');
+  });
+});
+
+const mockMeta: FigmaFileMeta = {
+  name: 'Rainmaker',
+  lastModified: '2026-03-01T00:00:00Z',
+  document: {
+    id: 'doc:1',
+    name: 'Document',
+    type: 'DOCUMENT',
+    children: [{ id: 'page:1', name: 'Home', type: 'CANVAS' }],
+  },
+};
+
+const mockVars: _FVR = { meta: { variables: {}, variableCollections: {} } };
+
+const mockPageNode: FigmaNode = {
+  id: 'page:1', name: 'Home', type: 'CANVAS', children: [],
+};
+
+function makeMockClient(overrides: Partial<FigmaClient> = {}): FigmaClient {
+  return {
+    getFileMeta: vi.fn().mockResolvedValue(mockMeta),
+    getVariables: vi.fn().mockResolvedValue(mockVars),
+    getPageNode: vi.fn().mockResolvedValue(mockPageNode),
+    getScreenshotUrl: vi.fn().mockResolvedValue('https://cdn.figma.com/img/fake.png'),
+    ...overrides,
+  };
+}
+
+describe('runFigmaScout', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('returns a ScoutResult with correct shape', async () => {
+    const result = await runFigmaScout({ fileId: 'abc123', page: 'Home' }, makeMockClient());
+    expect(result.fileId).toBe('abc123');
+    expect(result.page).toBe('Home');
+    expect(result.fileName).toBe('Rainmaker');
+    expect(result.tokens).toBeDefined();
+    expect(result.components).toBeDefined();
+    expect(result.layout).toBeDefined();
+    expect(result.markdownPath).toContain('abc123');
+    expect(result.scoutedAt).toBeTruthy();
+  });
+
+  it('throws ScoutError when page is not found', async () => {
+    const client = makeMockClient();
+    await expect(
+      runFigmaScout({ fileId: 'abc123', page: 'NonExistent' }, client)
+    ).rejects.toThrow(ScoutError);
+  });
+
+  it('returns result with screenshotPath="" when screenshot fails', async () => {
+    const client = makeMockClient({
+      getScreenshotUrl: vi.fn().mockRejectedValue(new Error('Figma screenshot error')),
+    });
+    const result = await runFigmaScout({ fileId: 'abc123', page: 'Home' }, client);
+    expect(result.screenshotPath).toBe('');
+  });
+
+  it('calls writeHook with correct source, action, and data', async () => {
+    const { writeHook } = await import('../hooks/index.js');
+    const result = await runFigmaScout({ fileId: 'abc123', page: 'Home' }, makeMockClient());
+    expect(vi.mocked(writeHook)).toHaveBeenCalledWith(
+      'design-log',
+      expect.objectContaining({
+        source: 'figma-scout',
+        action: 'scout',
+        data: expect.objectContaining({ fileId: 'abc123', page: 'Home' }),
+      })
+    );
+  });
+
+  it('returns result even when writeHook fails', async () => {
+    const { writeHook } = await import('../hooks/index.js');
+    vi.mocked(writeHook).mockRejectedValueOnce(new Error('disk full'));
+    const result = await runFigmaScout({ fileId: 'abc123', page: 'Home' }, makeMockClient());
+    expect(result).toBeDefined();
+    expect(result.fileName).toBe('Rainmaker');
+  });
+
+  it.skipIf(!process.env['ZICO_INTEGRATION'])('live scout against Blue Tees Golf file', async () => {
+    // Enable with: ZICO_INTEGRATION=1 FIGMA_TOKEN=<token> npx vitest run
+    const result = await runFigmaScout({
+      fileId: 'lp9w6ZIK7ghUopHyaaGHFr',
+      page: 'Cover',  // update to a real page name before running
+    });
+    expect(result.fileName).toBeTruthy();
+    expect(result.tokens).toBeDefined();
   });
 });
