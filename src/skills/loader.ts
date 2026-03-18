@@ -1,5 +1,5 @@
 /**
- * Skill Loader — Auto-discovers skills from skills/*/SKILL.md
+ * Skill Loader — Auto-discovers skills from skills/<name>/SKILL.md
  * 
  * WHY THIS EXISTS:
  * Instead of maintaining skill lists in 15 places (registry table, CLAUDE.md,
