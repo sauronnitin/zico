@@ -119,6 +119,7 @@ Steps run in sequence; steps 1–4 fail-fast on error:
 4. get_screenshot(fileId, page)
    → save PNG to hooks/screenshots/<fileId>-<page>.png
    → store relative path in ScoutResult.screenshotPath
+   → failure: best-effort (screenshot is supplementary); log warning, set screenshotPath = ""
 
 5. writeHook('design-log', { source: 'figma-scout', action: 'scout', data: ScoutResult })
    → appends to hooks/design-log.json
@@ -127,10 +128,11 @@ Steps run in sequence; steps 1–4 fail-fast on error:
 6. writeMarkdownSpec(result: ScoutResult)
    → write docs/scouts/YYYY-MM-DD-<fileId>-<page>.md
    → sections: header, tokens table, component inventory, layout summary, screenshot embed
+   → if screenshotPath === "", omit screenshot section from markdown
    → failure: log warning, continue
 ```
 
-Steps 5–6 are best-effort: if they fail, `runFigmaScout()` still returns `ScoutResult` so callers always have the data.
+Steps 1–3 fail-fast (design context is required). Steps 4–6 are best-effort: `runFigmaScout()` always returns `ScoutResult` regardless of their outcome. Downstream consumers must handle `screenshotPath === ""`.
 
 ---
 
@@ -145,6 +147,7 @@ zico scout <figma-url-or-file-id> --page "Page Name"
 - Parses file ID from URL using existing `parseInput()` from `src/intake/parser.ts`
 - Calls `runFigmaScout()` directly (no plan/approve flow — AUTO)
 - Prints: file name, page scouted, token counts, component count, output paths
+- `--page` is required; if omitted, print usage error and exit (no default page — ambiguous on multi-page files)
 
 ---
 
@@ -152,7 +155,7 @@ zico scout <figma-url-or-file-id> --page "Page Name"
 
 - **Scope by page** is the default. Future: `--all-pages` flag loops `runFigmaScout()` per page.
 - `ScoutResult` is the downstream contract for spec-writer polecat — keep it stable.
-- The Figma Launch App file ID (`lp9w6ZIK7ghUopHyaaGHFr`) is available as a default in the CLI for quick invocation without specifying a URL.
+- The Figma Launch App file ID (`lp9w6ZIK7ghUopHyaaGHFr`) is available as a project-specific shortcut in the CLI (`zico scout --btg --page "..."`) — not a general default.
 
 ---
 
@@ -164,6 +167,8 @@ zico scout <figma-url-or-file-id> --page "Page Name"
 | Throws `ScoutError` when page not found | Unit | Mock `get_metadata` returning no matching page |
 | Markdown output contains all required sections | Unit | Assert headings, token table, screenshot ref |
 | Hook entry written with correct shape | Unit | Assert `writeHook` called with right args |
+| Returns `ScoutResult` with `screenshotPath === ""` when screenshot fails | Unit | Mock `get_screenshot` to throw; assert result still returned |
+| Returns `ScoutResult` even when `writeHook` fails | Unit | Mock `writeHook` to throw; assert result still returned |
 | Live scout against `lp9w6ZIK7ghUopHyaaGHFr` | Integration | Skipped by default; `ZICO_INTEGRATION=1` to enable |
 
 ---
